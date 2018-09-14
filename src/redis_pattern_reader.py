@@ -33,6 +33,11 @@ class RedisReader(object):
         return res
 
     def values(self, pattern):
+        """
+        get values of all keys that match a pattern
+        :param pattern:
+        :return:
+        """
         keys = self.keys(pattern)
         str_keys = self.filter_keys_by_type(keys, "string")
         hash_keys = self.filter_keys_by_type(keys, "hash")
@@ -48,8 +53,13 @@ class RedisReader(object):
 
         return str_res + hash_res + list_res + set_res + zset_res
 
-    # todo: judge the key type and filter keys to different type.
     def filter_keys_by_type(self, keys, t):
+        """
+        judge the key type and filter keys to different type.
+        :param keys: keys to filter
+        :param t: the type of keys
+        :return: filtered keys
+        """
         with self.r.pipeline(transaction=False) as pipe:
             for key in keys:
                 pipe.type(key)
@@ -85,6 +95,11 @@ class GetValue(object):
         return res
 
     def r_list(self, keys):
+        """
+        get redis list values
+        :param keys:
+        :return:
+        """
         with self.r.pipeline(transaction=False) as pipe:
             for key in keys:
                 pipe.lrange(key, 0, -1)
@@ -93,6 +108,11 @@ class GetValue(object):
         return res
 
     def r_hash(self, keys):
+        """
+        get redis hash values
+        :param keys:
+        :return:
+        """
         with self.r.pipeline(transaction=False) as pipe:
             for key in keys:
                 pipe.hgetall(key)
@@ -101,6 +121,11 @@ class GetValue(object):
         return res
 
     def r_set(self, keys):
+        """
+        get redis set values
+        :param keys:
+        :return:
+        """
         with self.r.pipeline(transaction=False) as pipe:
             for key in keys:
                 # todo: sscan
@@ -110,6 +135,11 @@ class GetValue(object):
         return res
 
     def r_zset(self, keys):
+        """
+        get redis zset values
+        :param keys:
+        :return:
+        """
         with self.r.pipeline(transaction=False) as pipe:
             for key in keys:
                 pipe.zrange(key, 0, -1)
