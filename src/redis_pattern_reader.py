@@ -148,7 +148,10 @@ class GetValue(object):
         return res
 
 
-
+if __name__ == "__main__":
+    redis_reader = RedisReader()
+    res_get = redis_reader.values("*")
+    print(res_get)
 
 
 
