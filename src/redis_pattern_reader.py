@@ -32,12 +32,34 @@ class RedisReader(object):
 
         return res
 
-    def values(self, pattern, count=None, key_type=None):
+    def values(self, pattern):
         keys = self.keys(pattern)
-        res = self.get.r_string(keys)
-        return res
+        str_keys = self.filter_keys_by_type(keys, "string")
+        hash_keys = self.filter_keys_by_type(keys, "hash")
+        list_keys = self.filter_keys_by_type(keys, "list")
+        set_keys = self.filter_keys_by_type(keys, "set")
+        zset_keys = self.filter_keys_by_type(keys, "zset")
+
+        str_res = self.get.r_string(str_keys)
+        hash_res = self.get.r_hash(hash_keys)
+        list_res = self.get.r_hash(list_keys)
+        set_res = self.get.r_hash(set_keys)
+        zset_res = self.get.r_hash(zset_keys)
+
+        return str_res + hash_res + list_res + set_res + zset_res
 
     # todo: judge the key type and filter keys to different type.
+    def filter_keys_by_type(self, keys, t):
+        with self.r.pipeline(transaction=False) as pipe:
+            for key in keys:
+                pipe.type(key)
+            types = pipe.execute()
+        # result in type of (key, key_type)
+        res_k_t = zip(keys, types)
+        filtered_key = filter(lambda x: x[1] == t, res_k_t)
+        # remove type of key
+        res = map(lambda x: x[0], filtered_key)
+        return res
 
 
 class GetValue(object):
