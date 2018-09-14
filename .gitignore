@@ -2,3 +2,4 @@
 .idea/
 .ini
 **/tmp/
+*/log/
