@@ -4,6 +4,7 @@
 read data from redis with key pattern
 """
 import redis
+from itertools import chain
 
 
 class RedisReader(object):
@@ -29,7 +30,7 @@ class RedisReader(object):
             cur, new_keys = self.r.scan(cur, match=pattern, count=count)
             if new_keys:
                 res.extend(new_keys)
-
+        res = [key.decode() for key in res]
         return res
 
     def values(self, pattern):
@@ -47,11 +48,11 @@ class RedisReader(object):
 
         str_res = self.get.r_string(str_keys)
         hash_res = self.get.r_hash(hash_keys)
-        list_res = self.get.r_hash(list_keys)
-        set_res = self.get.r_hash(set_keys)
-        zset_res = self.get.r_hash(zset_keys)
+        list_res = self.get.r_list(list_keys)
+        set_res = self.get.r_set(set_keys)
+        zset_res = self.get.r_zset(zset_keys)
 
-        return str_res + hash_res + list_res + set_res + zset_res
+        return chain(str_res, hash_res, list_res, set_res, zset_res)
 
     def filter_keys_by_type(self, keys, t):
         """
@@ -64,11 +65,10 @@ class RedisReader(object):
             for key in keys:
                 pipe.type(key)
             types = pipe.execute()
+            types = [item.decode() for item in types]
         # result in type of (key, key_type)
-        res_k_t = zip(keys, types)
-        filtered_key = filter(lambda x: x[1] == t, res_k_t)
-        # remove type of key
-        res = map(lambda x: x[0], filtered_key)
+        key_pairs = zip(keys, types)
+        res = [key_pair[0] for key_pair in key_pairs if key_pair[1] == t]
         return res
 
 
@@ -87,9 +87,13 @@ class GetValue(object):
         :param keys:
         :return: [(key, value), ...]
         """
+        if not keys:
+            # mget could not accept empty list
+            return []
         # as what is said on github, the order of mget is ensured
         # https://github.com/antirez/redis/issues/4647
         values = self.r.mget(keys)
+        values = self.decode_values(values)
         # return in type of k, v list
         res = zip(keys, values)
         return res
@@ -104,6 +108,7 @@ class GetValue(object):
             for key in keys:
                 pipe.lrange(key, 0, -1)
             values = pipe.execute()
+            # values = self.decode_values(values)
         res = zip(keys, values)
         return res
 
@@ -117,6 +122,7 @@ class GetValue(object):
             for key in keys:
                 pipe.hgetall(key)
             values = pipe.execute()
+            # values = self.decode_values(values)
         res = zip(keys, values)
         return res
 
@@ -131,6 +137,7 @@ class GetValue(object):
                 # todo: sscan
                 pipe.smembers(key)
             values = pipe.execute()
+            # values = self.decode_values(values)
         res = zip(keys, values)
         return res
 
@@ -144,15 +151,23 @@ class GetValue(object):
             for key in keys:
                 pipe.zrange(key, 0, -1)
             values = pipe.execute()
+            # values = self.decode_values(values)
         res = zip(keys, values)
+        return res
+
+    @staticmethod
+    def decode_values(values):
+        res = [item.decode() for item in values]
         return res
 
 
 if __name__ == "__main__":
     redis_reader = RedisReader()
     res_get = redis_reader.values("*")
-    print(res_get)
+    for item in res_get:
+        print(item)
 
+    # todo: python3 compatible ... byte unicode.
 
 
 
